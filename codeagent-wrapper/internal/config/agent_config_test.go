@@ -14,7 +14,7 @@ func TestResolveAgentConfig_NoConfig_ReturnsHelpfulError(t *testing.T) {
 	t.Cleanup(ResetModelsConfigCacheForTest)
 	ResetModelsConfigCacheForTest()
 
-	_, _, _, _, _, _, _, _, _, err := ResolveAgentConfig("develop")
+	_, _, _, _, _, _, _, _, _, _, err := ResolveAgentConfig("develop")
 	if err == nil {
 		t.Fatalf("expected error, got nil")
 	}
@@ -70,7 +70,8 @@ func TestLoadModelsConfig_WithFile(t *testing.T) {
 				"model": "gpt-4o",
 				"description": "Custom agent",
 				"base_url": "https://agent.example",
-				"api_key": "agent-key"
+				"api_key": "agent-key",
+				"mcp_config": ["/tmp/agent-mcp.json"]
 			}
 		}
 	}`
@@ -120,7 +121,7 @@ func TestLoadModelsConfig_WithFile(t *testing.T) {
 		t.Errorf("ResolveBackendConfig(apiKey) = %q, want %q", apiKey, "backend-key")
 	}
 
-	backend, model, _, _, agentBaseURL, agentAPIKey, _, _, _, err := ResolveAgentConfig("custom-agent")
+	backend, model, _, _, agentBaseURL, agentAPIKey, _, _, _, mcpConfig, err := ResolveAgentConfig("custom-agent")
 	if err != nil {
 		t.Fatalf("ResolveAgentConfig(custom-agent): %v", err)
 	}
@@ -135,6 +136,9 @@ func TestLoadModelsConfig_WithFile(t *testing.T) {
 	}
 	if agentAPIKey != "agent-key" {
 		t.Errorf("ResolveAgentConfig(apiKey) = %q, want %q", agentAPIKey, "agent-key")
+	}
+	if len(mcpConfig) != 1 || mcpConfig[0] != "/tmp/agent-mcp.json" {
+		t.Errorf("ResolveAgentConfig(mcpConfig) = %v, want %v", mcpConfig, []string{"/tmp/agent-mcp.json"})
 	}
 }
 
@@ -164,7 +168,7 @@ func TestResolveAgentConfig_DynamicAgent(t *testing.T) {
 		t.Fatalf("WriteFile: %v", err)
 	}
 
-	backend, model, promptFile, _, _, _, _, _, _, err := ResolveAgentConfig("sarsh")
+	backend, model, promptFile, _, _, _, _, _, _, _, err := ResolveAgentConfig("sarsh")
 	if err != nil {
 		t.Fatalf("ResolveAgentConfig(sarsh): %v", err)
 	}
@@ -224,7 +228,7 @@ func TestResolveAgentConfig_UnknownAgent_ReturnsError(t *testing.T) {
 		t.Fatalf("WriteFile: %v", err)
 	}
 
-	_, _, _, _, _, _, _, _, _, err := ResolveAgentConfig("unknown-agent")
+	_, _, _, _, _, _, _, _, _, _, err := ResolveAgentConfig("unknown-agent")
 	if err == nil {
 		t.Fatalf("expected error, got nil")
 	}
@@ -252,7 +256,7 @@ func TestResolveAgentConfig_EmptyModel_ReturnsError(t *testing.T) {
 		t.Fatalf("WriteFile: %v", err)
 	}
 
-	_, _, _, _, _, _, _, _, _, err := ResolveAgentConfig("bad-agent")
+	_, _, _, _, _, _, _, _, _, _, err := ResolveAgentConfig("bad-agent")
 	if err == nil {
 		t.Fatalf("expected error, got nil")
 	}

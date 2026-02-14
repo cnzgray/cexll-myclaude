@@ -17,10 +17,7 @@ func (ClaudeBackend) Command() string { return "claude" }
 func (ClaudeBackend) Env(baseURL, apiKey string) map[string]string {
 	baseURL = strings.TrimSpace(baseURL)
 	apiKey = strings.TrimSpace(apiKey)
-	if baseURL == "" && apiKey == "" {
-		return nil
-	}
-	env := make(map[string]string, 2)
+	env := make(map[string]string, 3)
 	if baseURL != "" {
 		env["ANTHROPIC_BASE_URL"] = baseURL
 	}
@@ -141,6 +138,33 @@ func buildClaudeArgs(cfg *config.Config, targetArg string) []string {
 	if len(cfg.DisallowedTools) > 0 {
 		args = append(args, "--disallowedTools")
 		args = append(args, cfg.DisallowedTools...)
+	}
+
+	mcpConfigs := make([]string, 0, len(cfg.MCPConfig))
+	for _, entry := range cfg.MCPConfig {
+		entry = strings.TrimSpace(entry)
+		if entry == "" {
+			continue
+		}
+
+		expanded := entry
+		if entry == "~" || strings.HasPrefix(entry, "~/") || strings.HasPrefix(entry, "~\\") {
+			home, err := os.UserHomeDir()
+			if err != nil {
+				logWarnFn("Failed to resolve home directory for mcp_config path expansion: " + err.Error() + "; keeping original path: " + entry)
+			} else if entry == "~" {
+				expanded = home
+			} else {
+				expanded = home + entry[1:]
+			}
+		}
+
+		mcpConfigs = append(mcpConfigs, expanded)
+	}
+	if len(mcpConfigs) > 0 {
+		args = append(args, "--mcp-config")
+		args = append(args, mcpConfigs...)
+		args = append(args, "--strict-mcp-config")
 	}
 
 	args = append(args, "--output-format", "stream-json", "--verbose", targetArg)
