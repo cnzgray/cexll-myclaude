@@ -76,7 +76,8 @@ func TestParseParallelConfig_ResolvesAgentPromptFile(t *testing.T) {
     "custom-agent": {
       "backend": "codex",
       "model": "gpt-test",
-      "prompt_file": "~/.claude/prompt.md"
+      "prompt_file": "~/.claude/prompt.md",
+      "mcp_config": ["/tmp/agent.json"]
     }
   }
 }`), 0o644); err != nil {
@@ -97,6 +98,9 @@ do something`
 	}
 	if got := cfg.Tasks[0].PromptFile; got != "~/.claude/prompt.md" {
 		t.Fatalf("PromptFile = %q, want %q", got, "~/.claude/prompt.md")
+	}
+	if got := cfg.Tasks[0].MCPConfig; len(got) != 1 || got[0] != "/tmp/agent.json" {
+		t.Fatalf("MCPConfig = %v, want %v", got, []string{"/tmp/agent.json"})
 	}
 }
 

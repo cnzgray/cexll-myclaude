@@ -947,6 +947,7 @@ func RunCodexTaskWithContext(parentCtx context.Context, taskSpec TaskSpec, backe
 		Backend:         defaultBackendName,
 		AllowedTools:    taskSpec.AllowedTools,
 		DisallowedTools: taskSpec.DisallowedTools,
+		MCPConfig:       taskSpec.MCPConfig,
 	}
 
 	commandName := strings.TrimSpace(defaultCommandName)
@@ -1134,7 +1135,7 @@ func RunCodexTaskWithContext(parentCtx context.Context, taskSpec TaskSpec, backe
 	if envBackend != nil {
 		baseURL, apiKey := config.ResolveBackendConfig(cfg.Backend)
 		if agentName := strings.TrimSpace(taskSpec.Agent); agentName != "" {
-			agentBackend, _, _, _, agentBaseURL, agentAPIKey, _, _, _, err := config.ResolveAgentConfig(agentName)
+			agentBackend, _, _, _, agentBaseURL, agentAPIKey, _, _, _, _, err := config.ResolveAgentConfig(agentName)
 			if err == nil {
 				if strings.EqualFold(strings.TrimSpace(agentBackend), strings.TrimSpace(cfg.Backend)) {
 					baseURL, apiKey = agentBaseURL, agentAPIKey
@@ -1145,6 +1146,9 @@ func RunCodexTaskWithContext(parentCtx context.Context, taskSpec TaskSpec, backe
 			cmd.SetEnv(injected)
 			// Log injected env vars with masked API keys (to file and stderr)
 			for k, v := range injected {
+				if v == "" {
+					continue
+				}
 				msg := fmt.Sprintf("Env: %s=%s", k, maskSensitiveValue(k, v))
 				logInfoFn(msg)
 				fmt.Fprintln(os.Stderr, "  "+msg)

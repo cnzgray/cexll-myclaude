@@ -259,11 +259,11 @@ func buildSingleConfig(cmd *cobra.Command, args []string, rawArgv []string, opts
 	}
 
 	var resolvedBackend, resolvedModel, resolvedPromptFile, resolvedReasoning string
-	var resolvedAllowedTools, resolvedDisallowedTools []string
+	var resolvedAllowedTools, resolvedDisallowedTools, resolvedMCPConfig []string
 	if agentName != "" {
 		var resolvedYolo bool
 		var err error
-		resolvedBackend, resolvedModel, resolvedPromptFile, resolvedReasoning, _, _, resolvedYolo, resolvedAllowedTools, resolvedDisallowedTools, err = config.ResolveAgentConfig(agentName)
+		resolvedBackend, resolvedModel, resolvedPromptFile, resolvedReasoning, _, _, resolvedYolo, resolvedAllowedTools, resolvedDisallowedTools, resolvedMCPConfig, err = config.ResolveAgentConfig(agentName)
 		if err != nil {
 			return nil, fmt.Errorf("failed to resolve agent %q: %w", agentName, err)
 		}
@@ -348,6 +348,13 @@ func buildSingleConfig(cmd *cobra.Command, args []string, rawArgv []string, opts
 		skipPermissions = v.GetBool("skip-permissions")
 	}
 
+	var mcpConfig []string
+	if fromConfig := trimNonEmptyStrings(v.GetStringSlice("mcp-config")); len(fromConfig) > 0 {
+		mcpConfig = fromConfig
+	} else {
+		mcpConfig = trimNonEmptyStrings(resolvedMCPConfig)
+	}
+
 	if len(args) == 0 {
 		return nil, fmt.Errorf("task required")
 	}
@@ -376,6 +383,7 @@ func buildSingleConfig(cmd *cobra.Command, args []string, rawArgv []string, opts
 		MaxParallelWorkers: config.ResolveMaxParallelWorkers(),
 		AllowedTools:       resolvedAllowedTools,
 		DisallowedTools:    resolvedDisallowedTools,
+		MCPConfig:          mcpConfig,
 		Skills:             skills,
 		Worktree:           opts.Worktree,
 	}
@@ -432,6 +440,23 @@ func lastFlagIndex(argv []string, name string) int {
 	return last
 }
 
+func trimNonEmptyStrings(values []string) []string {
+	if len(values) == 0 {
+		return nil
+	}
+	out := make([]string, 0, len(values))
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value != "" {
+			out = append(out, value)
+		}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
+
 func runParallelMode(cmd *cobra.Command, args []string, opts *cliOptions, v *viper.Viper, name string) int {
 	if len(args) > 0 {
 		fmt.Fprintln(os.Stderr, "ERROR: --parallel reads its task configuration from stdin; no positional arguments are allowed.")
@@ -443,7 +468,10 @@ func runParallelMode(cmd *cobra.Command, args []string, opts *cliOptions, v *vip
 		return 1
 	}
 
-	if cmd.Flags().Changed("agent") || cmd.Flags().Changed("prompt-file") || cmd.Flags().Changed("reasoning-effort") || cmd.Flags().Changed("skills") {
+	if cmd.Flags().Changed("agent") ||
+		cmd.Flags().Changed("prompt-file") ||
+		cmd.Flags().Changed("reasoning-effort") ||
+		cmd.Flags().Changed("skills") {
 		fmt.Fprintln(os.Stderr, "ERROR: --parallel reads its task configuration from stdin; only --backend, --model, --output, --full-output and --skip-permissions are allowed.")
 		return 1
 	}
@@ -711,6 +739,7 @@ func runSingleMode(cfg *Config, name string) int {
 		Worktree:        cfg.Worktree,
 		AllowedTools:    cfg.AllowedTools,
 		DisallowedTools: cfg.DisallowedTools,
+		MCPConfig:       cfg.MCPConfig,
 		UseStdin:        useStdin,
 	}
 
