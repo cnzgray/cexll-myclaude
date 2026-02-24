@@ -21,3 +21,6 @@ coverage.html
 *.swp
 *~
 .DS_Store
+
+# distribution files
+dist/
